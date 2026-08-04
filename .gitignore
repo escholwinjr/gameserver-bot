@@ -1,0 +1,29 @@
+# User home files
+.bash_logout
+.bash_profile
+.bashrc
+.bash_history
+.gitconfig
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+
+# Environment/secrets
+.env
+bot.env
+
+# Runtime data
+data/
+
+# Backups
+*.backup
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
