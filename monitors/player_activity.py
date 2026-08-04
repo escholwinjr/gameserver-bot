@@ -6,6 +6,7 @@ from discord.ext import commands, tasks
 from api.palworld import get_players
 from player_store import save_player
 from config import (
+    IDLE_SHUTDOWN_ENABLED,
     PLAYER_ACTIVITY_CHANNEL_ID,
     PLAYER_POLL_SECONDS,
     SYSTEMD_SERVICE,
@@ -94,6 +95,23 @@ class PlayerActivityMonitor(commands.Cog):
         if not self.initialized:
             self.online_players = current_players
             self.initialized = True
+
+            if not IDLE_SHUTDOWN_ENABLED:
+                logger.info(
+                    "Idle shutdown is disabled by configuration."
+                )
+            elif not current_players:
+                idle_shutdown = self.bot.get_cog(
+                    "IdleShutdownService"
+                )
+
+                if idle_shutdown is None:
+                    logger.error(
+                        "IdleShutdownService is not loaded."
+                    )
+                else:
+                    await idle_shutdown.server_became_empty()
+
             return
 
         joined_ids = (
