@@ -10,7 +10,6 @@ from discord.ext import commands
 from api.palworld import get_players, get_server_info
 from checks import bot_channel_only
 from config import (
-    BOT_CHANNEL_ID,
     SERVER_NAME,
     STEAM_APP_ID,
     STEAM_INSTALL_DIR,
@@ -18,7 +17,6 @@ from config import (
 )
 
 from player_store import get_player_by_name, save_player
-from services.server_manager import ServerManager
 
 async def run_command(*args: str) -> Tuple[int, str, str]:
     process = await asyncio.create_subprocess_exec(
@@ -118,59 +116,6 @@ def player_id(
 class PalworldCommands(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-
-    @app_commands.command(
-        name="start",
-        description="Start the Palworld server.",
-    )
-    @app_commands.check(bot_channel_only)
-    async def start(
-        self,
-        interaction: discord.Interaction,
-    ) -> None:
-        await interaction.response.defer(
-            thinking=True
-        )
-
-        server_manager = self.bot.get_cog(
-            "ServerManager"
-        )
-
-        if server_manager is None:
-            await interaction.followup.send(
-                "❌ ServerManager is unavailable.",
-                ephemeral=True,
-            )
-            return
-
-        if await server_manager.is_running():
-            await interaction.followup.send(
-                "🟢 **{}** is already running.".format(
-                    SERVER_NAME,
-                )
-            )
-            return
-
-        try:
-            await server_manager.start()
-        except Exception as error:
-            await interaction.followup.send(
-                (
-                    "❌ Failed to start the server.\n"
-                    "`{}: {}`"
-                ).format(
-                    type(error).__name__,
-                    error,
-                ),
-                ephemeral=True,
-            )
-            return
-
-        await interaction.followup.send(
-            "🚀 **{}** is starting...".format(
-                SERVER_NAME,
-            )
-        )
 
     @app_commands.command(
         name="status",
