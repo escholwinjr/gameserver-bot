@@ -128,15 +128,22 @@ class PalworldCommands(commands.Cog):
     ) -> None:
         await interaction.response.defer(thinking=True)
 
-        return_code, stdout, stderr = await run_command(
-            "systemctl",
-            "is-active",
-            SYSTEMD_SERVICE,
+        server_manager = self.bot.get_cog(
+            "ServerManager"
         )
 
-        service_active = (
-            return_code == 0
-            and stdout == "active"
+        if server_manager is None:
+            await interaction.followup.send(
+                "❌ ServerManager is unavailable.",
+                ephemeral=True,
+            )
+            return
+
+        service_active = await server_manager.is_running()
+        status_text = (
+            "active"
+            if service_active
+            else "inactive"
         )
 
         embed = discord.Embed(
@@ -153,8 +160,6 @@ class PalworldCommands(commands.Cog):
             )
         else:
             embed.colour = discord.Colour.red()
-
-            status_text = stdout or stderr or "unknown"
 
             embed.add_field(
                 name="Service",
