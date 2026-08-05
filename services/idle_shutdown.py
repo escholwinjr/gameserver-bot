@@ -6,6 +6,7 @@ from typing import Optional
 from discord.ext import commands
 
 from config import (
+    IDLE_SHUTDOWN_ENABLED,
     IDLE_SHUTDOWN_SECONDS,
     BOT_CHANNEL_ID,
     SERVER_STOP_WRAPPER,
@@ -39,20 +40,13 @@ class IdleShutdownService(commands.Cog):
 
         await channel.send(message)
 
-    async def stop_palworld(self) -> None:
-        await asyncio.to_thread(
-            subprocess.run,
-            [
-                "sudo",
-                "-n",
-                SERVER_STOP_WRAPPER,
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
     async def server_became_empty(self) -> None:
+        if not IDLE_SHUTDOWN_ENABLED:
+            logger.info(
+                "Idle shutdown is disabled."
+            )
+            return
+
         if self.shutdown_task is not None:
             return
 
@@ -107,9 +101,30 @@ class IdleShutdownService(commands.Cog):
                 )
             )
 
+            if not IDLE_SHUTDOWN_ENABLED:
+                logger.info(
+                    "Idle shutdown disabled during countdown."
+                )
+                return
+
+            server_manager = self.bot.get_cog(
+                "ServerManager"
+            )
+
+            if server_manager is None:
+                logger.error(
+                    "ServerManager is not loaded."
+                )
+
+                await self.send_update_message(
+                    "❌ **Palworld failed to shut down.**\n"
+                    "The server manager is unavailable."
+                )
+                return
+
             try:
-                await self.stop_palworld()
-            except subprocess.CalledProcessError:
+                await server_manager.stop()
+            except Exception:
                 logger.exception(
                     "Unable to stop Palworld after idle timeout."
                 )

@@ -166,8 +166,12 @@ class PlayerActivityMonitor(commands.Cog):
             if joined_ids:
                 await idle_shutdown.player_joined()
 
-            if self.online_players and not current_players:
-                await idle_shutdown.server_became_empty()
+        if (
+            IDLE_SHUTDOWN_ENABLED
+            and self.online_players
+            and not current_players
+        ):
+            await idle_shutdown.server_became_empty()
 
         self.online_players = current_players
 
