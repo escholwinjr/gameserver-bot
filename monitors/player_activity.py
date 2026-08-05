@@ -71,8 +71,11 @@ class PlayerActivityMonitor(commands.Cog):
 
         try:
             players = await get_players()
-        except Exception:
-            logger.exception("Unable to retrieve Palworld players")
+        except Exception as error:
+            logger.info(
+                "Palworld REST API is not ready yet: %s",
+                error,
+            )
             return
 
         current_players = {}
