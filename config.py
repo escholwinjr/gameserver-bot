@@ -26,6 +26,22 @@ def optional_setting(name: str, default: str = "") -> str:
 
     return value.strip()
 
+def optional_bool(
+    name: str,
+    default: bool = False,
+) -> bool:
+    value = optional_setting(
+        name,
+        "true" if default else "false",
+    ).lower()
+
+    return value in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
 
 DISCORD_TOKEN = required_setting("DISCORD_TOKEN")
 DISCORD_GUILD_ID = int(required_setting("DISCORD_GUILD_ID"))
@@ -43,6 +59,11 @@ PALWORLD_API_URL = required_setting("PALWORLD_API_URL")
 PALWORLD_API_USER = required_setting("PALWORLD_API_USER")
 PALWORLD_PASSWORD_FILE = Path(
     required_setting("PALWORLD_PASSWORD_FILE")
+)
+
+IDLE_SHUTDOWN_ENABLED = optional_bool(
+    "IDLE_SHUTDOWN_ENABLED",
+    True,
 )
 
 SYSTEMD_SERVICE = optional_setting(

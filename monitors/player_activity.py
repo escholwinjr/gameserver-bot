@@ -6,6 +6,7 @@ from discord.ext import commands, tasks
 from api.palworld import get_players
 from player_store import save_player
 from config import (
+    IDLE_SHUTDOWN_ENABLED,
     PLAYER_ACTIVITY_CHANNEL_ID,
     PLAYER_POLL_SECONDS,
     SYSTEMD_SERVICE,
@@ -70,8 +71,11 @@ class PlayerActivityMonitor(commands.Cog):
 
         try:
             players = await get_players()
-        except Exception:
-            logger.exception("Unable to retrieve Palworld players")
+        except Exception as error:
+            logger.info(
+                "Palworld REST API is not ready yet: %s",
+                error,
+            )
             return
 
         current_players = {}
@@ -94,6 +98,23 @@ class PlayerActivityMonitor(commands.Cog):
         if not self.initialized:
             self.online_players = current_players
             self.initialized = True
+
+            if not IDLE_SHUTDOWN_ENABLED:
+                logger.info(
+                    "Idle shutdown is disabled by configuration."
+                )
+            elif not current_players:
+                idle_shutdown = self.bot.get_cog(
+                    "IdleShutdownService"
+                )
+
+                if idle_shutdown is None:
+                    logger.error(
+                        "IdleShutdownService is not loaded."
+                    )
+                else:
+                    await idle_shutdown.server_became_empty()
+
             return
 
         joined_ids = (
@@ -148,8 +169,12 @@ class PlayerActivityMonitor(commands.Cog):
             if joined_ids:
                 await idle_shutdown.player_joined()
 
-            if self.online_players and not current_players:
-                await idle_shutdown.server_became_empty()
+        if (
+            IDLE_SHUTDOWN_ENABLED
+            and self.online_players
+            and not current_players
+        ):
+            await idle_shutdown.server_became_empty()
 
         self.online_players = current_players
 

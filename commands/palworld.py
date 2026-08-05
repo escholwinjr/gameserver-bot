@@ -118,6 +118,59 @@ class PalworldCommands(commands.Cog):
         self.bot = bot
 
     @app_commands.command(
+        name="start",
+        description="Start the Palworld server.",
+    )
+    @app_commands.check(bot_channel_only)
+    async def start(
+        self,
+        interaction: discord.Interaction,
+    ) -> None:
+        await interaction.response.defer(
+            thinking=True
+        )
+
+        server_manager = self.bot.get_cog(
+            "ServerManager"
+        )
+
+        if server_manager is None:
+            await interaction.followup.send(
+                "❌ ServerManager is unavailable.",
+                ephemeral=True,
+            )
+            return
+
+        if await server_manager.is_running():
+            await interaction.followup.send(
+                "🟢 **{}** is already running.".format(
+                    SERVER_NAME,
+                )
+            )
+            return
+
+        try:
+            await server_manager.start()
+        except Exception as error:
+            await interaction.followup.send(
+                (
+                    "❌ Failed to start the server.\n"
+                    "`{}: {}`"
+                ).format(
+                    type(error).__name__,
+                    error,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        await interaction.followup.send(
+            "🚀 **{}** is starting.".format(
+                SERVER_NAME,
+            )
+        )
+
+    @app_commands.command(
         name="status",
         description="Show the Palworld server status.",
     )
@@ -128,15 +181,22 @@ class PalworldCommands(commands.Cog):
     ) -> None:
         await interaction.response.defer(thinking=True)
 
-        return_code, stdout, stderr = await run_command(
-            "systemctl",
-            "is-active",
-            SYSTEMD_SERVICE,
+        server_manager = self.bot.get_cog(
+            "ServerManager"
         )
 
-        service_active = (
-            return_code == 0
-            and stdout == "active"
+        if server_manager is None:
+            await interaction.followup.send(
+                "❌ ServerManager is unavailable.",
+                ephemeral=True,
+            )
+            return
+
+        service_active = await server_manager.is_running()
+        status_text = (
+            "active"
+            if service_active
+            else "inactive"
         )
 
         embed = discord.Embed(
@@ -153,8 +213,6 @@ class PalworldCommands(commands.Cog):
             )
         else:
             embed.colour = discord.Colour.red()
-
-            status_text = stdout or stderr or "unknown"
 
             embed.add_field(
                 name="Service",
