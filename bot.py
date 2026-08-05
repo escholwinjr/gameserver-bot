@@ -44,6 +44,10 @@ class GameServerBot(commands.Bot):
         )
 
         await self.load_extension(
+            "services.server_manager"
+        )
+
+        await self.load_extension(
             "services.idle_shutdown"
         )
 
