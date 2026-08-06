@@ -91,12 +91,33 @@ initialize_database()
 
 bot = GameServerBot()
 
-
 @bot.tree.error
 async def handle_app_command_error(
     interaction: discord.Interaction,
     error: app_commands.AppCommandError,
 ) -> None:
+    if isinstance(
+        error,
+        app_commands.MissingRole,
+    ):
+        message = (
+            "You do not have permission "
+            "to use this command."
+        )
+
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                message,
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                message,
+                ephemeral=True,
+            )
+
+        return
+
     if isinstance(
         error,
         app_commands.CheckFailure,
@@ -119,28 +140,21 @@ async def handle_app_command_error(
 
         return
 
-    logger.error(
-        "Unhandled application command error: %s",
-        error,
+    logger.exception(
+        "Unhandled application command error",
         exc_info=error,
-    )
-
-    message = (
-        "The command encountered an "
-        "unexpected error."
     )
 
     if interaction.response.is_done():
         await interaction.followup.send(
-            message,
+            "An unexpected error occurred.",
             ephemeral=True,
         )
     else:
         await interaction.response.send_message(
-            message,
+            "An unexpected error occurred.",
             ephemeral=True,
         )
-
 
 bot.run(
     DISCORD_TOKEN,

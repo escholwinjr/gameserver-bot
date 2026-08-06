@@ -10,6 +10,7 @@ from discord.ext import commands
 from api.palworld import get_players, get_server_info
 from checks import bot_channel_only
 from config import (
+    ADMIN_ROLE,
     SERVER_NAME,
     STEAM_APP_ID,
     STEAM_INSTALL_DIR,
@@ -112,6 +113,112 @@ def player_id(
 
     return None
 
+class StopConfirmationView(discord.ui.View):
+    def __init__(
+        self,
+        bot: commands.Bot,
+        requester_id: int,
+    ) -> None:
+        super().__init__(timeout=30)
+
+        self.bot = bot
+        self.requester_id = requester_id
+
+    async def interaction_check(
+        self,
+        interaction: discord.Interaction,
+    ) -> bool:
+        if interaction.user.id == self.requester_id:
+            return True
+
+        await interaction.response.send_message(
+            "Only the person who requested the shutdown "
+            "can use these buttons.",
+            ephemeral=True,
+        )
+        return False
+
+    async def on_timeout(self) -> None:
+        for item in self.children:
+            item.disabled = True
+
+        if self.message is not None:
+            try:
+                await self.message.edit(
+                    content=(
+                        "⌛ The server shutdown request expired."
+                    ),
+                    view=self,
+                )
+            except Exception:
+                pass
+
+    @discord.ui.button(
+        label="Stop Server",
+        style=discord.ButtonStyle.danger,
+    )
+
+    async def confirm_stop(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ) -> None:
+        server_manager = self.bot.get_cog(
+            "ServerManager"
+        )
+
+        if server_manager is None:
+            await interaction.response.edit_message(
+                content="❌ ServerManager is unavailable.",
+                view=None,
+            )
+            self.stop()
+            return
+
+        await interaction.response.edit_message(
+            content="🌙 Stopping the Palworld server...",
+            view=None,
+        )
+
+        try:
+            await server_manager.stop()
+        except Exception as error:
+            await interaction.followup.send(
+                (
+                    "❌ Failed to stop the server.\n"
+                    "`{}: {}`"
+                ).format(
+                    type(error).__name__,
+                    error,
+                ),
+                ephemeral=True,
+            )
+            self.stop()
+            return
+
+        await interaction.followup.send(
+            "🔴 **{}** has stopped.".format(
+                SERVER_NAME,
+            )
+        )
+
+        self.stop()
+
+    @discord.ui.button(
+        label="Cancel",
+        style=discord.ButtonStyle.secondary,
+    )
+    async def cancel_stop(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button,
+    ) -> None:
+        await interaction.response.edit_message(
+            content="✅ Server shutdown canceled.",
+            view=None,
+        )
+
+        self.stop()
 
 class PalworldCommands(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
@@ -169,6 +276,85 @@ class PalworldCommands(commands.Cog):
                 SERVER_NAME,
             )
         )
+
+    @app_commands.command(
+        name="stop",
+        description="Stop the Palworld server.",
+    )
+    @app_commands.check(bot_channel_only)
+    @app_commands.checks.has_role(ADMIN_ROLE)
+    async def stop(
+        self,
+        interaction: discord.Interaction,
+    ) -> None:
+        await interaction.response.defer(
+            thinking=True
+        )
+
+        server_manager = self.bot.get_cog(
+            "ServerManager"
+        )
+
+        if server_manager is None:
+            await interaction.followup.send(
+                "❌ ServerManager is unavailable.",
+                ephemeral=True,
+            )
+            return
+
+        if not await server_manager.is_running():
+            await interaction.followup.send(
+                "🔴 **{}** is already stopped.".format(
+                    SERVER_NAME,
+                )
+            )
+            return
+
+        try:
+            players = await get_players()
+            player_count = len(players)
+        except Exception:
+            player_count = None
+
+        if player_count is None:
+            player_message = (
+                "The current player count could not be retrieved.\n"
+                "Stopping may disconnect active players."
+            )
+        elif player_count == 0:
+            player_message = (
+                "No players are currently connected."
+            )
+        elif player_count == 1:
+            player_message = (
+                "**1 player** is currently connected.\n"
+                "Stopping now will disconnect them."
+            )
+        else:
+            player_message = (
+                "**{} players** are currently connected.\n"
+                "Stopping now will disconnect them.".format(
+                    player_count
+                )
+            )
+
+        view = StopConfirmationView(
+            bot=self.bot,
+            requester_id=interaction.user.id,
+        )
+
+        message = await interaction.followup.send(
+            (
+                "⚠️ **Stop {}?**\n\n{}"
+            ).format(
+                SERVER_NAME,
+                player_message,
+            ),
+            view=view,
+            wait=True,
+        )
+
+        view.message = message
 
     @app_commands.command(
         name="status",

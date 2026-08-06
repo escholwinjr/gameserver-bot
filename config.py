@@ -42,11 +42,14 @@ def optional_bool(
         "on",
     )
 
-
 DISCORD_TOKEN = required_setting("DISCORD_TOKEN")
 DISCORD_GUILD_ID = int(required_setting("DISCORD_GUILD_ID"))
 
 BOT_CHANNEL_ID = int(required_setting("BOT_CHANNEL_ID"))
+
+ADMIN_ROLE = int(
+    os.getenv("ADMIN_ROLE", "0")
+)
 
 PLAYER_ACTIVITY_CHANNEL_ID = int(
     optional_setting(
@@ -97,6 +100,7 @@ SERVER_NAME = optional_setting(
     "SERVER_NAME",
     "Palworld Server",
 )
+
 PLAYER_POLL_SECONDS = int(
     optional_setting(
         "PLAYER_POLL_SECONDS",
