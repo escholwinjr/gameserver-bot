@@ -146,3 +146,10 @@ STEAM_UPDATE_CHECK_HOURS = int(
         "1",
     )
 )
+
+UPDATE_COUNTDOWN_SECONDS = int(
+    optional_setting(
+        "UPDATE_COUNTDOWN_SECONDS",
+        "3600",
+    )
+)

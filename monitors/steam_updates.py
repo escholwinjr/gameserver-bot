@@ -5,7 +5,10 @@ import logging
 from pathlib import Path
 
 from discord.ext import commands, tasks
-from config import BOT_CHANNEL_ID
+from config import (
+    BOT_CHANNEL_ID,
+    STEAM_UPDATE_CHECK_HOURS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +90,10 @@ class SteamUpdateMonitor(commands.Cog):
 
         await channel.send(message)
 
-    @tasks.loop(hours=1)
+    @tasks.loop(
+        hours=STEAM_UPDATE_CHECK_HOURS
+    )
+
     async def check_for_updates(self) -> None:
         installed_build = await asyncio.to_thread(
             get_installed_build
