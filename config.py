@@ -127,6 +127,13 @@ IDLE_SHUTDOWN_SECONDS = int(
     )
 )
 
+IDLE_SHUTDOWN_GRACE_SECONDS = int(
+    optional_setting(
+        "IDLE_SHUTDOWN_GRACE_SECONDS",
+        "300",
+    )
+)
+
 SERVER_STARTUP_TIMEOUT = int(
     optional_setting(
         "SERVER_STARTUP_TIMEOUT",
