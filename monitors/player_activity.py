@@ -113,7 +113,9 @@ class PlayerActivityMonitor(commands.Cog):
                         "IdleShutdownService is not loaded."
                     )
                 else:
-                    await idle_shutdown.server_became_empty()
+                    await idle_shutdown.server_became_empty(
+                        reason="startup",
+                    )
 
             return
 
@@ -174,7 +176,9 @@ class PlayerActivityMonitor(commands.Cog):
             and self.online_players
             and not current_players
         ):
-            await idle_shutdown.server_became_empty()
+            await idle_shutdown.server_became_empty(
+                reason="players_left",
+        )
 
         self.online_players = current_players
 
