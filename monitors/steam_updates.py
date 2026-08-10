@@ -160,12 +160,48 @@ class SteamUpdateMonitor(commands.Cog):
             )
 
             logger.info(
-                "Update countdown completed for build %s.",
-                latest_build,
+                "Update countdown completed. "
+                "Re-checking Steam."
+            )
+
+            current_installed_build = await asyncio.to_thread(
+                get_installed_build
+            )
+
+            current_latest_build = await asyncio.to_thread(
+                get_latest_build
+            )
+
+            logger.info(
+                "Post-countdown Steam build check: "
+                "installed=%s latest=%s",
+                current_installed_build,
+                current_latest_build,
+            )
+
+            if current_installed_build == current_latest_build:
+                logger.info(
+                    "Palworld no longer requires an update."
+                )
+
+                self.last_announced_build = None
+
+                await self.send_update_message(
+                    "✅ **Palworld is already up to date.**\n"
+                    "The scheduled update has been canceled."
+                )
+                return
+
+            logger.warning(
+                "Palworld update is still required: "
+                "installed=%s latest=%s",
+                current_installed_build,
+                current_latest_build,
             )
 
             await self.send_update_message(
                 "🧪 **Update countdown completed.**\n"
+                "The update is still required.\n"
                 "No shutdown or update was performed."
             )
 
@@ -175,6 +211,17 @@ class SteamUpdateMonitor(commands.Cog):
                 latest_build,
             )
             raise
+
+        except Exception:
+            logger.exception(
+                "Unable to verify Steam update "
+                "after countdown."
+            )
+
+            await self.send_update_message(
+                "❌ **Unable to verify the Palworld update.**\n"
+                "Automatic maintenance has been canceled."
+            )
 
         finally:
             self.update_task = None
