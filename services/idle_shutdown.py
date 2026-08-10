@@ -174,12 +174,18 @@ class IdleShutdownService(commands.Cog):
                 "Idle timeout reached. Stopping Palworld."
             )
 
+            total_idle = (
+                IDLE_SHUTDOWN_GRACE_SECONDS
+                + IDLE_SHUTDOWN_SECONDS
+            )
+
             await self.send_update_message(
-                "🌙 **Palworld is shutting down.**\n"
-                "The server remained empty through the "
-                "grace period and **{}** shutdown "
-                "countdown.".format(
-                    shutdown_duration
+                "🌙 **Palworld is shutting down.**\n\n"
+                "The server has been empty for **{}**.\n\n"
+                "Good night! 😴".format(
+                    format_duration(
+                        total_idle
+                    )
                 )
             )
 
