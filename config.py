@@ -49,6 +49,15 @@ BOT_CHANNEL_ID = int(required_setting("BOT_CHANNEL_ID"))
 REACTION_ROLE_CHANNEL_ID = int(
     required_setting("REACTION_ROLE_CHANNEL_ID")
 )
+PALWORLD_ROLE_ID = int(
+    required_setting("PALWORLD_ROLE_ID")
+)
+VALHEIM_ROLE_ID = int(
+    required_setting("VALHEIM_ROLE_ID")
+)
+WOW_ROLE_ID = int(
+    required_setting("WOW_ROLE_ID")
+)
 
 ADMIN_ROLE = int(
     os.getenv("ADMIN_ROLE", "0")

@@ -4,18 +4,46 @@ import logging
 import discord
 from discord.ext import commands
 
-from config import REACTION_ROLE_CHANNEL_ID
+from config import (
+    PALWORLD_ROLE_ID,
+    REACTION_ROLE_CHANNEL_ID,
+    VALHEIM_ROLE_ID,
+    WOW_ROLE_ID,
+)
 from player_store import get_bot_state, save_bot_state
 
 
 logger = logging.getLogger(__name__)
 
 SELECTOR_MESSAGE_STATE_KEY = "reaction_role_selector_message_id"
-PALWORLD_EMOJI_ID = 1536792461685563452
+REACTION_ROLES = {
+    1536792461685563452: {
+        "name": "palworld",
+        "role_id": PALWORLD_ROLE_ID,
+        "label": "Palworld Players",
+    },
+    1536793141171200070: {
+        "name": "Valheim",
+        "role_id": VALHEIM_ROLE_ID,
+        "label": "Valheim",
+    },
+    1536793173509275810: {
+        "name": "wow",
+        "role_id": WOW_ROLE_ID,
+        "label": "WoW",
+    },
+}
 SELECTOR_MESSAGE_CONTENT = (
     "**Choose your game roles**\n\n"
     "React below to add or remove a game role.\n\n"
-    "<:palworld:1536792461685563452> — Palworld Players"
+    + "\n".join(
+        "<:{}:{}> — {}".format(
+            role_config["name"],
+            emoji_id,
+            role_config["label"],
+        )
+        for emoji_id, role_config in REACTION_ROLES.items()
+    )
 )
 
 
@@ -141,25 +169,29 @@ class ReactionRoles(commands.Cog):
 
             self.selector_message_id = message.id
 
-            emoji = discord.PartialEmoji(
-                name="palworld",
-                id=PALWORLD_EMOJI_ID,
-            )
+            for emoji_id, role_config in REACTION_ROLES.items():
+                bot_has_reaction = any(
+                    getattr(reaction.emoji, "id", None)
+                    == emoji_id
+                    and reaction.me
+                    for reaction in message.reactions
+                )
 
-            has_reaction = any(
-                getattr(reaction.emoji, "id", None)
-                == PALWORLD_EMOJI_ID
-                for reaction in message.reactions
-            )
+                if bot_has_reaction:
+                    continue
 
-            if not has_reaction:
+                emoji = discord.PartialEmoji(
+                    name=role_config["name"],
+                    id=emoji_id,
+                )
+
                 try:
                     await message.add_reaction(emoji)
                 except Exception:
                     logger.exception(
                         "Unable to add emoji %s to reaction-role "
                         "message %s.",
-                        PALWORLD_EMOJI_ID,
+                        emoji_id,
                         message.id,
                     )
 
@@ -169,6 +201,35 @@ class ReactionRoles(commands.Cog):
             logger.exception(
                 "Unable to initialize reaction-role selector message."
             )
+
+    async def resolve_member(
+        self,
+        guild: discord.Guild,
+        user_id: int,
+    ):
+        member = guild.get_member(user_id)
+
+        if member is not None:
+            return member
+
+        try:
+            return await guild.fetch_member(user_id)
+        except discord.NotFound:
+            logger.warning(
+                "Unable to resolve reaction-role member %s "
+                "in guild %s.",
+                user_id,
+                guild.id,
+            )
+        except discord.HTTPException:
+            logger.exception(
+                "Unable to fetch reaction-role member %s "
+                "in guild %s.",
+                user_id,
+                guild.id,
+            )
+
+        return None
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(
@@ -184,6 +245,14 @@ class ReactionRoles(commands.Cog):
         if payload.message_id != self.selector_message_id:
             return
 
+        if payload.guild_id is None:
+            return
+
+        role_config = REACTION_ROLES.get(payload.emoji.id)
+
+        if role_config is None:
+            return
+
         logger.info(
             "Reaction added: guild=%s channel=%s "
             "message=%s user=%s emoji=%s",
@@ -193,6 +262,56 @@ class ReactionRoles(commands.Cog):
             payload.user_id,
             payload.emoji,
         )
+
+        guild = self.bot.get_guild(payload.guild_id)
+
+        if guild is None:
+            logger.error(
+                "Unable to add reaction role: guild %s "
+                "could not be resolved.",
+                payload.guild_id,
+            )
+            return
+
+        member = await self.resolve_member(
+            guild,
+            payload.user_id,
+        )
+
+        if member is None:
+            return
+
+        role = guild.get_role(role_config["role_id"])
+
+        if role is None:
+            logger.error(
+                "Unable to add reaction role: role %s "
+                "could not be resolved in guild %s.",
+                role_config["role_id"],
+                guild.id,
+            )
+            return
+
+        if role in member.roles:
+            return
+
+        try:
+            await member.add_roles(role)
+            logger.info(
+                "Assigned reaction role %s to member %s "
+                "in guild %s.",
+                role.id,
+                member.id,
+                guild.id,
+            )
+        except discord.HTTPException:
+            logger.exception(
+                "Unable to add reaction role %s to member %s "
+                "in guild %s.",
+                role.id,
+                member.id,
+                guild.id,
+            )
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(
@@ -208,6 +327,14 @@ class ReactionRoles(commands.Cog):
         if payload.message_id != self.selector_message_id:
             return
 
+        if payload.guild_id is None:
+            return
+
+        role_config = REACTION_ROLES.get(payload.emoji.id)
+
+        if role_config is None:
+            return
+
         logger.info(
             "Reaction removed: guild=%s channel=%s "
             "message=%s user=%s emoji=%s",
@@ -217,6 +344,56 @@ class ReactionRoles(commands.Cog):
             payload.user_id,
             payload.emoji,
         )
+
+        guild = self.bot.get_guild(payload.guild_id)
+
+        if guild is None:
+            logger.error(
+                "Unable to remove reaction role: guild %s "
+                "could not be resolved.",
+                payload.guild_id,
+            )
+            return
+
+        member = await self.resolve_member(
+            guild,
+            payload.user_id,
+        )
+
+        if member is None:
+            return
+
+        role = guild.get_role(role_config["role_id"])
+
+        if role is None:
+            logger.error(
+                "Unable to remove reaction role: role %s "
+                "could not be resolved in guild %s.",
+                role_config["role_id"],
+                guild.id,
+            )
+            return
+
+        if role not in member.roles:
+            return
+
+        try:
+            await member.remove_roles(role)
+            logger.info(
+                "Removed reaction role %s from member %s "
+                "in guild %s.",
+                role.id,
+                member.id,
+                guild.id,
+            )
+        except discord.HTTPException:
+            logger.exception(
+                "Unable to remove reaction role %s from member %s "
+                "in guild %s.",
+                role.id,
+                member.id,
+                guild.id,
+            )
 
 
 async def setup(bot: commands.Bot) -> None:
