@@ -121,14 +121,10 @@ class ReactionRoles(commands.Cog):
 
             self.selector_message_id = message.id
 
-            emoji = self.bot.get_emoji(TEST_EMOJI_ID)
-
-            if emoji is None:
-                logger.error(
-                    "Unable to resolve reaction-role emoji %s.",
-                    TEST_EMOJI_ID,
-                )
-                return
+            emoji = discord.PartialEmoji(
+                name="kek",
+                id=TEST_EMOJI_ID,
+            )
 
             has_reaction = any(
                 getattr(reaction.emoji, "id", None)
