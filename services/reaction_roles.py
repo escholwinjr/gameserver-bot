@@ -11,11 +11,11 @@ from player_store import get_bot_state, save_bot_state
 logger = logging.getLogger(__name__)
 
 SELECTOR_MESSAGE_STATE_KEY = "reaction_role_selector_message_id"
-PALWORLD_EMOJI_ID = 1221988049991503992
+PALWORLD_EMOJI_ID = 1536792461685563452
 SELECTOR_MESSAGE_CONTENT = (
     "**Choose your game roles**\n\n"
     "React below to add or remove a game role.\n\n"
-    "<:palsphere:1221988049991503992> — Palworld Players"
+    "<:palworld:1536792461685563452> — Palworld Players"
 )
 
 
@@ -142,7 +142,7 @@ class ReactionRoles(commands.Cog):
             self.selector_message_id = message.id
 
             emoji = discord.PartialEmoji(
-                name="palsphere",
+                name="palworld",
                 id=PALWORLD_EMOJI_ID,
             )
 
