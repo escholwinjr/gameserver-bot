@@ -95,6 +95,26 @@ class ReactionRoles(commands.Cog):
                     )
                     return
 
+            if (
+                message is not None
+                and message.content != SELECTOR_MESSAGE_CONTENT
+            ):
+                try:
+                    message = await message.edit(
+                        content=SELECTOR_MESSAGE_CONTENT
+                    )
+                    logger.info(
+                        "Updated reaction-role selector message %s "
+                        "content.",
+                        message.id,
+                    )
+                except Exception:
+                    logger.exception(
+                        "Unable to update reaction-role selector "
+                        "message %s content.",
+                        message.id,
+                    )
+
             if message is None:
                 try:
                     message = await channel.send(
