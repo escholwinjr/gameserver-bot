@@ -3,6 +3,8 @@ import logging
 import discord
 from discord.ext import commands
 
+from config import REACTION_ROLE_CHANNEL_ID
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,9 @@ class ReactionRoles(commands.Cog):
         if self.is_bot_reaction(payload):
             return
 
+        if payload.channel_id != REACTION_ROLE_CHANNEL_ID:
+            return
+
         logger.info(
             "Reaction added: guild=%s channel=%s "
             "message=%s user=%s emoji=%s",
@@ -44,6 +49,9 @@ class ReactionRoles(commands.Cog):
         payload: discord.RawReactionActionEvent,
     ) -> None:
         if self.is_bot_reaction(payload):
+            return
+
+        if payload.channel_id != REACTION_ROLE_CHANNEL_ID:
             return
 
         logger.info(

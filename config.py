@@ -46,6 +46,9 @@ DISCORD_TOKEN = required_setting("DISCORD_TOKEN")
 DISCORD_GUILD_ID = int(required_setting("DISCORD_GUILD_ID"))
 
 BOT_CHANNEL_ID = int(required_setting("BOT_CHANNEL_ID"))
+REACTION_ROLE_CHANNEL_ID = int(
+    required_setting("REACTION_ROLE_CHANNEL_ID")
+)
 
 ADMIN_ROLE = int(
     os.getenv("ADMIN_ROLE", "0")
