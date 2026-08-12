@@ -23,6 +23,45 @@ def initialize_database() -> None:
             """
         )
 
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS bot_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """
+        )
+
+
+def get_bot_state(key: str) -> Optional[str]:
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        row = connection.execute(
+            """
+            SELECT value
+            FROM bot_state
+            WHERE key = ?
+            """,
+            (key,),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return row[0]
+
+
+def save_bot_state(key: str, value: str) -> None:
+    with sqlite3.connect(DATABASE_PATH) as connection:
+        connection.execute(
+            """
+            INSERT INTO bot_state (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value
+            """,
+            (key, value),
+        )
+
 
 def save_player(player: dict) -> None:
     last_seen = datetime.now(timezone.utc).isoformat()
