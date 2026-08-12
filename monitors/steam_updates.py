@@ -1,18 +1,24 @@
-import re
-import subprocess
 import asyncio
 import logging
+import re
+import subprocess
 from pathlib import Path
 
 from discord.ext import commands, tasks
-from config import BOT_CHANNEL_ID
+
+from config import (
+    BOT_CHANNEL_ID,
+    STEAM_UPDATE_CHECK_HOURS,
+    UPDATE_COUNTDOWN_SECONDS,
+)
+
 
 logger = logging.getLogger(__name__)
 
-STEAMCMD = "/home/palworld/steamcmd/steamcmd.sh"
 APPMANIFEST = Path(
     "/home/palworld/server/steamapps/appmanifest_2394010.acf"
 )
+
 
 def get_installed_build() -> str:
     manifest_text = APPMANIFEST.read_text(
@@ -33,6 +39,7 @@ def get_installed_build() -> str:
         )
 
     return match.group(1)
+
 
 def get_latest_build() -> str:
     result = subprocess.run(
@@ -58,20 +65,51 @@ def get_latest_build() -> str:
 
     return match.group(1)
 
+
+def format_duration(seconds: int) -> str:
+    if seconds % 3600 == 0:
+        hours = seconds // 3600
+
+        return "{} hour{}".format(
+            hours,
+            "" if hours == 1 else "s",
+        )
+
+    if seconds % 60 == 0:
+        minutes = seconds // 60
+
+        return "{} minute{}".format(
+            minutes,
+            "" if minutes == 1 else "s",
+        )
+
+    return "{} second{}".format(
+        seconds,
+        "" if seconds == 1 else "s",
+    )
+
+
 class SteamUpdateMonitor(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self.last_announced_build = None
+        self.update_task = None
+
         self.check_for_updates.start()
 
     def cog_unload(self) -> None:
         self.check_for_updates.cancel()
 
+        if self.update_task is not None:
+            self.update_task.cancel()
+
     async def send_update_message(
         self,
         message: str,
     ) -> None:
-        channel = self.bot.get_channel(BOT_CHANNEL_ID)
+        channel = self.bot.get_channel(
+            BOT_CHANNEL_ID
+        )
 
         if channel is None:
             try:
@@ -87,7 +125,185 @@ class SteamUpdateMonitor(commands.Cog):
 
         await channel.send(message)
 
-    @tasks.loop(hours=1)
+    async def update_countdown(
+        self,
+        installed_build: str,
+        latest_build: str,
+    ) -> None:
+        try:
+            duration = format_duration(
+                UPDATE_COUNTDOWN_SECONDS
+            )
+
+            logger.info(
+                "Starting update countdown: "
+                "duration=%s installed=%s latest=%s",
+                duration,
+                installed_build,
+                latest_build,
+            )
+
+            await self.send_update_message(
+                "⚠️ **Palworld update detected.**\n"
+                "Installed build: **{}**\n"
+                "Latest build: **{}**\n\n"
+                "The server will shut down in **{}** "
+                "to install the update.".format(
+                    installed_build,
+                    latest_build,
+                    duration,
+                )
+            )
+
+            await asyncio.sleep(
+                UPDATE_COUNTDOWN_SECONDS
+            )
+
+            logger.info(
+                "Update countdown completed. "
+                "Re-checking Steam."
+            )
+
+            current_installed_build = await asyncio.to_thread(
+                get_installed_build
+            )
+
+            current_latest_build = await asyncio.to_thread(
+                get_latest_build
+            )
+
+            logger.info(
+                "Post-countdown Steam build check: "
+                "installed=%s latest=%s",
+                current_installed_build,
+                current_latest_build,
+            )
+
+            if current_installed_build == current_latest_build:
+                logger.info(
+                    "Palworld no longer requires an update."
+                )
+
+                self.last_announced_build = None
+
+                await self.send_update_message(
+                    "✅ **Palworld is already up to date.**\n"
+                    "The scheduled update has been canceled."
+                )
+                return
+
+            logger.warning(
+                "Palworld update is still required: "
+                "installed=%s latest=%s",
+                current_installed_build,
+                current_latest_build,
+            )
+
+            server_manager = self.bot.get_cog(
+                "ServerManager"
+            )
+
+            if server_manager is None:
+                logger.error(
+                    "Unable to perform automatic maintenance: "
+                    "ServerManager is not loaded."
+                )
+
+                await self.send_update_message(
+                    "❌ **Automatic Palworld maintenance failed.**\n"
+                    "The server manager is unavailable. "
+                    "An administrator needs to check the server."
+                )
+                return
+
+            await self.send_update_message(
+                "🔧 **Palworld maintenance is starting.**\n"
+                "The server is shutting down and will be updated."
+            )
+
+            logger.info(
+                "Starting automatic Palworld maintenance."
+            )
+
+            await server_manager.stop()
+            await server_manager.update()
+            await server_manager.start()
+
+            server_running = await server_manager.is_running()
+
+            if not server_running:
+                raise RuntimeError(
+                    "Palworld service is not running after update."
+                )
+
+            updated_installed_build = await asyncio.to_thread(
+                get_installed_build
+            )
+
+            updated_latest_build = await asyncio.to_thread(
+                get_latest_build
+            )
+
+            logger.info(
+                "Post-maintenance Steam build check: "
+                "installed=%s latest=%s",
+                updated_installed_build,
+                updated_latest_build,
+            )
+
+            if updated_installed_build != updated_latest_build:
+                raise RuntimeError(
+                    "Palworld build is still outdated after update: "
+                    "installed={} latest={}".format(
+                        updated_installed_build,
+                        updated_latest_build,
+                    )
+                )
+
+            self.last_announced_build = None
+
+            logger.info(
+                "Palworld updated successfully and is running: "
+                "build=%s",
+                updated_installed_build,
+            )
+
+            await self.send_update_message(
+                "✅ **Palworld has been updated and is back online.**\n"
+                "Current build: **{}**".format(
+                    updated_installed_build
+                )
+            )
+
+        except asyncio.CancelledError:
+            logger.info(
+                "Update countdown canceled for build %s.",
+                latest_build,
+            )
+            raise
+
+        except Exception:
+            logger.exception(
+                "Automatic Palworld maintenance failed."
+            )
+
+            try:
+                await self.send_update_message(
+                    "❌ **Automatic Palworld maintenance failed.**\n"
+                    "An administrator needs to check the server."
+                )
+            except Exception:
+                logger.exception(
+                    "Unable to send automatic maintenance "
+                    "failure message."
+                )
+
+        finally:
+            self.update_task = None
+
+    @tasks.loop(
+        hours=STEAM_UPDATE_CHECK_HOURS
+    )
     async def check_for_updates(self) -> None:
         installed_build = await asyncio.to_thread(
             get_installed_build
@@ -110,18 +326,23 @@ class SteamUpdateMonitor(commands.Cog):
         if self.last_announced_build == latest_build:
             return
 
+        if self.update_task is not None:
+            logger.info(
+                "An update countdown is already running."
+            )
+            return
+
         self.last_announced_build = latest_build
 
         logger.warning(
-            "Steam update available: installed=%s latest=%s",
+            "Steam update available: "
+            "installed=%s latest=%s",
             installed_build,
             latest_build,
         )
 
-        await self.send_update_message(
-            "⚠️ **Palworld update available!**\n"
-            "Installed build: **{}**\n"
-            "Latest build: **{}**".format(
+        self.update_task = asyncio.create_task(
+            self.update_countdown(
                 installed_build,
                 latest_build,
             )

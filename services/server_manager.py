@@ -7,6 +7,7 @@ from discord.ext import commands
 from config import (
     SERVER_START_WRAPPER,
     SERVER_STOP_WRAPPER,
+    SERVER_UPDATE_WRAPPER,
     SYSTEMD_SERVICE,
 )
 
@@ -90,6 +91,28 @@ class ServerManager(commands.Cog):
             SYSTEMD_SERVICE,
         )
 
+    async def update(self) -> None:
+        logger.info(
+            "Updating %s through privileged wrapper.",
+            SYSTEMD_SERVICE,
+        )
+
+        await asyncio.to_thread(
+            subprocess.run,
+            [
+                "sudo",
+                "-n",
+                SERVER_UPDATE_WRAPPER,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        logger.info(
+            "%s update completed successfully.",
+            SYSTEMD_SERVICE,
+        )
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(

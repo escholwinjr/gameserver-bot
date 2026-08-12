@@ -96,6 +96,10 @@ SERVER_STOP_WRAPPER = optional_setting(
     "/usr/local/sbin/palworld-stop",
 )
 
+SERVER_UPDATE_WRAPPER = required_setting(
+    "SERVER_UPDATE_WRAPPER"
+)
+
 STEAM_APP_ID = optional_setting(
     "STEAM_APP_ID",
     "2394010",
@@ -159,5 +163,12 @@ STEAM_UPDATE_CHECK_HOURS = int(
     optional_setting(
         "STEAM_UPDATE_CHECK_HOURS",
         "1",
+    )
+)
+
+UPDATE_COUNTDOWN_SECONDS = int(
+    optional_setting(
+        "UPDATE_COUNTDOWN_SECONDS",
+        "3600",
     )
 )
