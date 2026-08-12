@@ -199,10 +199,80 @@ class SteamUpdateMonitor(commands.Cog):
                 current_latest_build,
             )
 
+            server_manager = self.bot.get_cog(
+                "ServerManager"
+            )
+
+            if server_manager is None:
+                logger.error(
+                    "Unable to perform automatic maintenance: "
+                    "ServerManager is not loaded."
+                )
+
+                await self.send_update_message(
+                    "❌ **Automatic Palworld maintenance failed.**\n"
+                    "The server manager is unavailable. "
+                    "An administrator needs to check the server."
+                )
+                return
+
             await self.send_update_message(
-                "🧪 **Update countdown completed.**\n"
-                "The update is still required.\n"
-                "No shutdown or update was performed."
+                "🔧 **Palworld maintenance is starting.**\n"
+                "The server is shutting down and will be updated."
+            )
+
+            logger.info(
+                "Starting automatic Palworld maintenance."
+            )
+
+            await server_manager.stop()
+            await server_manager.update()
+            await server_manager.start()
+
+            server_running = await server_manager.is_running()
+
+            if not server_running:
+                raise RuntimeError(
+                    "Palworld service is not running after update."
+                )
+
+            updated_installed_build = await asyncio.to_thread(
+                get_installed_build
+            )
+
+            updated_latest_build = await asyncio.to_thread(
+                get_latest_build
+            )
+
+            logger.info(
+                "Post-maintenance Steam build check: "
+                "installed=%s latest=%s",
+                updated_installed_build,
+                updated_latest_build,
+            )
+
+            if updated_installed_build != updated_latest_build:
+                raise RuntimeError(
+                    "Palworld build is still outdated after update: "
+                    "installed={} latest={}".format(
+                        updated_installed_build,
+                        updated_latest_build,
+                    )
+                )
+
+            self.last_announced_build = None
+
+            logger.info(
+                "Palworld updated successfully and is running: "
+                "build=%s",
+                updated_installed_build,
+            )
+
+            await self.send_update_message(
+                "✅ **Palworld has been updated and is back online.**\n"
+                "Current build: **{}**".format(
+                    updated_installed_build
+                )
             )
 
         except asyncio.CancelledError:
@@ -214,14 +284,19 @@ class SteamUpdateMonitor(commands.Cog):
 
         except Exception:
             logger.exception(
-                "Unable to verify Steam update "
-                "after countdown."
+                "Automatic Palworld maintenance failed."
             )
 
-            await self.send_update_message(
-                "❌ **Unable to verify the Palworld update.**\n"
-                "Automatic maintenance has been canceled."
-            )
+            try:
+                await self.send_update_message(
+                    "❌ **Automatic Palworld maintenance failed.**\n"
+                    "An administrator needs to check the server."
+                )
+            except Exception:
+                logger.exception(
+                    "Unable to send automatic maintenance "
+                    "failure message."
+                )
 
         finally:
             self.update_task = None
