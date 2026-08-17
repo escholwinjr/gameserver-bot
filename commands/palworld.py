@@ -197,9 +197,10 @@ class StopConfirmationView(discord.ui.View):
             return
 
         await interaction.followup.send(
-            "🔴 **{}** has stopped.".format(
+            "✅ Shutdown command accepted for **{}**.".format(
                 SERVER_NAME,
-            )
+            ),
+            ephemeral=True,
         )
 
         self.stop()
@@ -272,9 +273,10 @@ class PalworldCommands(commands.Cog):
             return
 
         await interaction.followup.send(
-            "🚀 **{}** is starting.".format(
+            "✅ Start command accepted for **{}**.".format(
                 SERVER_NAME,
-            )
+            ),
+            ephemeral=True,
         )
 
     @app_commands.command(
