@@ -124,6 +124,13 @@ PLAYER_POLL_SECONDS = int(
     )
 )
 
+SERVER_STATE_POLL_SECONDS = int(
+    optional_setting(
+        "SERVER_STATE_POLL_SECONDS",
+        "5",
+    )
+)
+
 IDLE_SHUTDOWN_SECONDS = int(
     optional_setting(
         "IDLE_SHUTDOWN_SECONDS",
