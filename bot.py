@@ -9,7 +9,7 @@ from config import (
     DISCORD_TOKEN,
 )
 
-from player_store import initialize_database
+from games.palworld.player_store import initialize_database
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,31 +38,31 @@ class GameServerBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         await self.load_extension(
-            "commands.general"
+            "core.general"
         )
 
         await self.load_extension(
-            "commands.palworld"
+            "games.palworld.commands.palworld"
         )
 
         await self.load_extension(
-            "services.server_manager"
+            "games.palworld.services.server_manager"
         )
 
         await self.load_extension(
-            "services.idle_shutdown"
+            "games.palworld.services.idle_shutdown"
         )
 
         await self.load_extension(
-            "services.reaction_roles"
+            "games.palworld.services.reaction_roles"
         )
 
         await self.load_extension(
-            "monitors.player_activity"
+            "games.palworld.monitors.player_activity"
         )
 
         await self.load_extension(
-            "monitors.steam_updates"
+            "games.palworld.monitors.steam_updates"
         )
 
         guild = discord.Object(

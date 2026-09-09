@@ -3,8 +3,8 @@ import logging
 import subprocess
 
 from discord.ext import commands, tasks
-from api.palworld import get_players
-from player_store import save_player
+from games.palworld.api.palworld import get_players
+from games.palworld.player_store import save_player
 from config import (
     IDLE_SHUTDOWN_ENABLED,
     PLAYER_ACTIVITY_CHANNEL_ID,

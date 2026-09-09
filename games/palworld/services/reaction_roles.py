@@ -10,7 +10,7 @@ from config import (
     VALHEIM_ROLE_ID,
     WOW_ROLE_ID,
 )
-from player_store import get_bot_state, save_bot_state
+from games.palworld.player_store import get_bot_state, save_bot_state
 
 
 logger = logging.getLogger(__name__)

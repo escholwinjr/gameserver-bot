@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-DATABASE_PATH = Path(__file__).parent / "data" / "players.db"
+DATABASE_PATH = Path(__file__).parents[2] / "data" / "players.db"
 
 
 def initialize_database() -> None:

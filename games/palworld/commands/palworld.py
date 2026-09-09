@@ -7,8 +7,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from api.palworld import get_players, get_server_info
-from checks import bot_channel_only
+from games.palworld.api.palworld import get_players, get_server_info
+from games.palworld.checks import bot_channel_only
 from config import (
     ADMIN_ROLE,
     SERVER_NAME,
@@ -17,7 +17,7 @@ from config import (
     SYSTEMD_SERVICE,
 )
 
-from player_store import get_player_by_name, save_player
+from games.palworld.player_store import get_player_by_name, save_player
 
 async def run_command(*args: str) -> Tuple[int, str, str]:
     process = await asyncio.create_subprocess_exec(
